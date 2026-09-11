@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model answers {
+  id           BigInt    @id @default(autoincrement())
+  response_id  BigInt
+  question_id  BigInt
+  rating_value Int?
+  text_value   String?
+  created_at   DateTime  @db.Timestamp(6)
+  questions    questions @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  responses    responses @relation(fields: [response_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([response_id, question_id], map: "answers_response_id_question_id_idx")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model course_offerings {
+  id           BigInt        @id @default(autoincrement())
+  course_id    BigInt
+  lecturer_id  BigInt
+  semester_id  BigInt
+  section_code String?       @db.VarChar(50)
+  created_at   DateTime      @db.Timestamp(6)
+  updated_at   DateTime      @db.Timestamp(6)
+  courses      courses       @relation(fields: [course_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users        users         @relation(fields: [lecturer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  semesters    semesters     @relation(fields: [semester_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  enrollments  enrollments[]
+  evaluations  evaluations[]
+
+  @@unique([course_id, lecturer_id, semester_id, section_code], map: "course_offerings_course_id_lecturer_id_semester_id_section__idx")
+}
+
+model courses {
+  id               BigInt             @id @default(autoincrement())
+  course_code      String             @unique @db.VarChar(30)
+  course_name      String             @db.VarChar(150)
+  description      String?
+  created_at       DateTime           @db.Timestamp(6)
+  updated_at       DateTime           @db.Timestamp(6)
+  course_offerings course_offerings[]
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model enrollments {
+  id                 BigInt           @id @default(autoincrement())
+  student_id         BigInt
+  course_offering_id BigInt
+  enrolled_at        DateTime         @db.Timestamp(6)
+  course_offerings   course_offerings @relation(fields: [course_offering_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users              users            @relation(fields: [student_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([student_id, course_offering_id], map: "enrollments_student_id_course_offering_id_idx")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model evaluation_participants {
+  id            BigInt      @id @default(autoincrement())
+  evaluation_id BigInt
+  student_id    BigInt
+  has_submitted Boolean     @default(false)
+  submitted_at  DateTime?   @db.Timestamp(6)
+  created_at    DateTime    @db.Timestamp(6)
+  evaluations   evaluations @relation(fields: [evaluation_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users         users       @relation(fields: [student_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([evaluation_id, student_id], map: "evaluation_participants_evaluation_id_student_id_idx")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model evaluations {
+  id                      BigInt                    @id @default(autoincrement())
+  course_offering_id      BigInt
+  survey_id               BigInt
+  status                  evaluation_status         @default(DRAFT)
+  start_at                DateTime?                 @db.Timestamp(6)
+  end_at                  DateTime?                 @db.Timestamp(6)
+  created_by              BigInt
+  created_at              DateTime                  @db.Timestamp(6)
+  updated_at              DateTime                  @db.Timestamp(6)
+  evaluation_participants evaluation_participants[]
+  course_offerings        course_offerings          @relation(fields: [course_offering_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                   users                     @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  surveys                 surveys                   @relation(fields: [survey_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  responses               responses[]
+
+  @@unique([course_offering_id, survey_id], map: "evaluations_course_offering_id_survey_id_idx")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model questions {
+  id            BigInt        @id @default(autoincrement())
+  survey_id     BigInt
+  question_text String
+  question_type question_type
+  category      String?       @db.VarChar(100)
+  is_required   Boolean       @default(true)
+  min_rating    Int?
+  max_rating    Int?
+  display_order Int
+  created_at    DateTime      @db.Timestamp(6)
+  updated_at    DateTime      @db.Timestamp(6)
+  answers       answers[]
+  surveys       surveys       @relation(fields: [survey_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([survey_id, display_order], map: "questions_survey_id_display_order_idx")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model responses {
+  id            BigInt      @id @default(autoincrement())
+  evaluation_id BigInt
+  submitted_at  DateTime    @db.Timestamp(6)
+  created_at    DateTime    @db.Timestamp(6)
+  answers       answers[]
+  evaluations   evaluations @relation(fields: [evaluation_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model semesters {
+  id               BigInt             @id @default(autoincrement())
+  semester_name    String             @db.VarChar(50)
+  academic_year    String             @db.VarChar(20)
+  start_date       DateTime?          @db.Date
+  end_date         DateTime?          @db.Date
+  created_at       DateTime           @db.Timestamp(6)
+  updated_at       DateTime           @db.Timestamp(6)
+  course_offerings course_offerings[]
+
+  @@unique([semester_name, academic_year], map: "semesters_semester_name_academic_year_idx")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model surveys {
+  id          BigInt        @id @default(autoincrement())
+  title       String        @db.VarChar(200)
+  description String?
+  created_by  BigInt
+  created_at  DateTime      @db.Timestamp(6)
+  updated_at  DateTime      @db.Timestamp(6)
+  evaluations evaluations[]
+  questions   questions[]
+  users       users         @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model users {
+  id                      BigInt                    @id @default(autoincrement())
+  email                   String                    @unique @db.VarChar(255)
+  password_hash           String                    @db.VarChar(255)
+  full_name               String                    @db.VarChar(150)
+  role                    user_role
+  status                  user_status               @default(ACTIVE)
+  created_at              DateTime                  @db.Timestamp(6)
+  updated_at              DateTime                  @db.Timestamp(6)
+  course_offerings        course_offerings[]
+  enrollments             enrollments[]
+  evaluation_participants evaluation_participants[]
+  evaluations             evaluations[]
+  surveys                 surveys[]
+}
+
+enum evaluation_status {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum question_type {
+  RATING
+  TEXT
+}
+
+enum user_role {
+  ADMIN
+  LECTURER
+  STUDENT
+}
+
+enum user_status {
+  ACTIVE
+  INACTIVE
+}
