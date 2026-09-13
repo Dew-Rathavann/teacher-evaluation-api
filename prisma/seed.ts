@@ -137,6 +137,16 @@ async function main() {
     },
   });
 
+  const surveyVersion = await prisma.survey_versions.create({
+    data: {
+      survey_id: survey.id,
+      version_no: 1,
+      status: 'DRAFT',
+      created_by: admin.id,
+      created_at: now,
+    },
+  });
+
   // ---------- QUESTIONS ----------
   const questions = [
     { text: 'The lecturer explains concepts clearly.', type: 'RATING' },
@@ -151,7 +161,7 @@ async function main() {
     const q = questions[i];
     await prisma.questions.create({
       data: {
-        survey_id: survey.id,
+        survey_version_id: surveyVersion.id,
         question_text: q.text,
         question_type: q.type as any,
         category: q.type === 'RATING' ? 'Teaching' : 'Feedback',
@@ -174,7 +184,7 @@ async function main() {
   const evalOpen = await prisma.evaluations.create({
     data: {
       course_offering_id: offering1.id,
-      survey_id: survey.id,
+      survey_version_id: surveyVersion.id,
       status: 'OPEN',
       start_at: start,
       end_at: end,
@@ -187,7 +197,7 @@ async function main() {
   await prisma.evaluations.create({
     data: {
       course_offering_id: offering2.id,
-      survey_id: survey.id,
+      survey_version_id: surveyVersion.id,
       status: 'DRAFT',
       created_by: admin.id,
       created_at: now,
